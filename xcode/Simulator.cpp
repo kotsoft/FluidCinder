@@ -63,7 +63,12 @@ public:
 			Node* gi = &grid[p->gi];
 			for (int i = 0; i < 3; i++, gi += gSizeY) {
 				for (int j = 0; j < 3; j++, gi++) {
-					
+					if (gi->active) {
+						
+					} else {
+						gi->active = true;
+						
+					}
 				}
 			}
 		}
