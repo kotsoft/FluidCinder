@@ -13,6 +13,8 @@ using namespace std;
 struct Material {
 	float mass, restDensity, stiffness, bulkViscosity, surfaceTension, kElastic, maxDeformation, meltRate, viscosity, damping, friction, stickiness, smoothing, gravity;
 	int materialIndex;
+	
+	Material() : mass(1), restDensity(1), stiffness(1), bulkViscosity(1), surfaceTension(0), kElastic(0), maxDeformation(0), meltRate(0), viscosity(0), damping(0), friction(0), stickiness(0), smoothing(0), gravity(.05) {};
 };
 
 struct Particle {
@@ -24,11 +26,16 @@ struct Particle {
 	float gx[3];
 	float gy[3];
 	
-	Particle() : x(0), y(0), u(0), v(0), T00(0), T01(0), T11(0), cx(0), cy(0), gi(0) {
-		memset(px, 0, 3*sizeof(float));
-		memset(py, 0, 3*sizeof(float));
-		memset(gx, 0, 3*sizeof(float));
-		memset(gy, 0, 3*sizeof(float));
+	Particle(Material* mat) : mat(mat), x(0), y(0), u(0), v(0), T00(0), T01(0), T11(0), cx(0), cy(0), gi(0) {
+		memset(px, 0, 12*sizeof(float));
+	}
+	
+	Particle(Material* mat, float x, float y) : mat(mat), x(x), y(y), u(1), v(0), T00(0), T01(0), T11(0), cx(0), cy(0), gi(0) {
+		memset(px, 0, 12*sizeof(float));
+	}
+	
+	Particle(Material* mat, float x, float y, float u, float v) : mat(mat), x(x), y(y), u(u), v(v), T00(0), T01(0), T11(0), cx(0), cy(0), gi(0) {
+		memset(px, 0, 12*sizeof(float));
 	}
 };
 
@@ -44,10 +51,14 @@ class Simulator {
 	int gSizeX, gSizeY;
 	Node* grid;
 	vector<Node*> active;
-	vector<Particle*> particles;
+	Material materials[numMaterials];
 public:
+	vector<Particle*> particles;
 	Simulator() {
-		
+		materials[0].materialIndex = 0;
+		materials[1].materialIndex = 1;
+		materials[2].materialIndex = 2;
+		materials[3].materialIndex = 3;
 	}
 	void initializeGrid(int sizeX, int sizeY) {
 		gSizeX = sizeX;
@@ -55,6 +66,13 @@ public:
 		grid = new Node[gSizeX*gSizeY];
 		for (int i = 0; i < gSizeX*gSizeY; i++) {
 			grid[i] = Node();
+		}
+	}
+	void addParticles() {
+		for (int i = 0; i < 20; i++) {
+			for (int j = 0; j < 20; j++) {
+				particles.push_back(new Particle(&materials[0], i + 3, j + 3));
+			}
 		}
 	}
 	void update() {
@@ -99,8 +117,7 @@ public:
 						n->particleDensity = phi;
 						n->u = phi * mu;
 						n->v = phi * mv;
-						memset(n->cgx, 0, numMaterials*sizeof(float));
-						memset(n->cgy, 0, numMaterials*sizeof(float));
+						memset(n->cgx, 0, 2 * numMaterials * sizeof(float));
 						n->cgx[mi] = gxi * pyj;
 						n->cgy[mi] = pxi * gyj;
 					}
@@ -147,12 +164,21 @@ public:
 					float phi = pxi * pyj;
 					
 					density += phi * n->particleDensity;
-					
-					
 				}
 			}
 			
 			float pressure = p->mat->stiffness / fmaxf(1, p->mat->restDensity) * (density - p->mat->restDensity);
+			
+			if (p->x < 1) {
+				fx += 1 - p->x;
+			} else if (p->x > gSizeX - 2) {
+				fx += gSizeX - 2 - p->x;
+			}
+			if (p->y < 1) {
+				fy += 1 - p->y;
+			} else if (p->y < gSizeY - 2) {
+				fy += gSizeY - 2 - p->y;
+			}
 			
 			n = &grid[p->gi];
 			px = p->px;
@@ -169,8 +195,8 @@ public:
 					
 					float gxm = gxi * pxi;
 					float gym = pxi * gyj;
-					n->ax += -gxm * pressure + fx * phi;
-					n->ay += -gym * pressure + fy * phi;
+					//n->ax += -gxm * pressure + fx * phi;
+					//n->ay += -gym * pressure + fy * phi;
 				}
 			}
 		}
@@ -249,10 +275,10 @@ public:
 				}
 			}
 			
-			p->x += gu;
+			p->x += p->u;
 			p->y += gv;
 			
-			p->u = gu;
+			//p->u = gu;
 			p->v = gv;
 			
 			// Update grid cell index and kernel weights
@@ -279,7 +305,7 @@ public:
 			float* gx = p->gx;
 			float* gy = p->gy;
 			
-			// Quadratic interpolation kernel - Don't change these constants unless you know what you're doing
+			// Quadratic interpolation kernel - Don't change these constants
 			px[0] = .5f * x * x + 1.5f * x + 1.125f;
 			gx[0] = x + 1.5f;
 			x++;
