@@ -20,6 +20,7 @@
 		53E3CDFC0E86099300238D2B /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 53E3CDFB0E86099300238D2B /* Carbon.framework */; };
 		8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */; };
 		9C7ECB5F152518F100A4346A /* Simulator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9C7ECB5E152518F100A4346A /* Simulator.cpp */; };
+		9CE9F67815272AED00D6A33E /* SimpleSimulator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9CE9F67715272AED00D6A33E /* SimpleSimulator.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -42,6 +43,7 @@
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8D1107320486CEB800E47090 /* FluidCinder.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FluidCinder.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9C7ECB5E152518F100A4346A /* Simulator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Simulator.cpp; path = ../src/Simulator.cpp; sourceTree = "<group>"; };
+		9CE9F67715272AED00D6A33E /* SimpleSimulator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SimpleSimulator.cpp; path = ../src/SimpleSimulator.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -68,6 +70,7 @@
 		080E96DDFE201D6D7F000001 /* Source */ = {
 			isa = PBXGroup;
 			children = (
+				9CE9F67715272AED00D6A33E /* SimpleSimulator.cpp */,
 				9C7ECB5E152518F100A4346A /* Simulator.cpp */,
 				00BAE6590E7ED9C10018A608 /* FluidCinderApp.cpp */,
 			);
@@ -210,6 +213,7 @@
 			files = (
 				00BAE65A0E7ED9C10018A608 /* FluidCinderApp.cpp in Sources */,
 				9C7ECB5F152518F100A4346A /* Simulator.cpp in Sources */,
+				9CE9F67815272AED00D6A33E /* SimpleSimulator.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

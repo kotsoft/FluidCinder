@@ -1,6 +1,6 @@
 #include "cinder/app/AppBasic.h"
 #include "cinder/gl/gl.h"
-#include "Simulator.cpp"
+#include "SimpleSimulator.cpp"
 #include <vector>
 #include <omp.h>
 

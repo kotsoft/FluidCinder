@@ -1,40 +1,38 @@
 //
-//  Simulator.cpp
+//  SimpleSimulator.cpp
 //  FluidCinder
 //
-//  Created by Grant Kot on 3/29/12.
+//  Created by Grant Kot on 3/31/12.
 //  Copyright (c) 2012 Grant Kot. All rights reserved.
 //
-#define numMaterials 4
+
 #include <vector>
 #include <math.h>
 using namespace std;
 
 struct Material {
-	float mass, restDensity, stiffness, bulkViscosity, surfaceTension, kElastic, maxDeformation, meltRate, viscosity, damping, friction, stickiness, smoothing, gravity;
-	int materialIndex;
+	float restDensity, stiffness, bulkViscosity, surfaceTension, viscosity, damping, friction, stickiness, smoothing, gravity;
 	
-	Material() : mass(1), restDensity(10), stiffness(1), bulkViscosity(1), surfaceTension(.01), kElastic(1), maxDeformation(0), meltRate(0), viscosity(0), damping(0), friction(0), stickiness(0), smoothing(0), gravity(.05) {};
+	Material() : restDensity(10), stiffness(1), bulkViscosity(1), surfaceTension(.01), viscosity(0), damping(0), friction(0), stickiness(0), smoothing(0), gravity(.05) {};
 };
 
 struct Particle {
-	Material* mat;
-	float x, y, u, v, T00, T01, T11;
+	float x, y, u, v;
 	int cx, cy, gi;
 	float px[3];
 	float py[3];
 	float gx[3];
 	float gy[3];
 	
-	Particle(Material* mat) : mat(mat), x(0), y(0), u(0), v(0), T00(0), T01(0), T11(0), cx(0), cy(0), gi(0) {
+	Particle() : x(0), y(0), u(0), v(0), cx(0), cy(0), gi(0) {
 		memset(px, 0, 12*sizeof(float));
 	}
 	
-	Particle(Material* mat, float x, float y) : mat(mat), x(x), y(y), u(0), v(0), T00(0), T01(0), T11(0), cx(0), cy(0), gi(0) {
+	Particle(float x, float y) : x(x), y(y), u(0), v(0), cx(0), cy(0), gi(0) {
 		memset(px, 0, 12*sizeof(float));
 	}
 	
-	Particle(Material* mat, float x, float y, float u, float v) : mat(mat), x(x), y(y), u(u), v(v), T00(0), T01(0), T11(0), cx(0), cy(0), gi(0) {
+	Particle(float x, float y, float u, float v) : x(x), y(y), u(u), v(v), cx(0), cy(0), gi(0) {
 		memset(px, 0, 12*sizeof(float));
 	}
 	
@@ -68,9 +66,7 @@ struct Particle {
 };
 
 struct Node {
-	float mass, particleDensity, gx, gy, u, v, ax, ay;
-	float cgx[numMaterials];
-	float cgy[numMaterials];
+	float mass, gx, gy, u, v, ax, ay;
 	bool active;
 	Node() : active(false) {}
 };
@@ -79,7 +75,7 @@ class Simulator {
 	int gSizeX, gSizeY, gSizeY_3;
 	Node* grid;
 	vector<Node*> active;
-	Material materials[numMaterials];
+	Material mat;
 	float uscip(float p00, float x00, float y00, float p01, float x01, float y01, float p10, float x10, float y10, float p11, float x11, float y11, float u, float v)
 	{
 		float dx = x00 - x01;
@@ -97,12 +93,7 @@ class Simulator {
 	}
 public:
 	vector<Particle*> particles;
-	Simulator() {
-		materials[0].materialIndex = 0;
-		materials[1].materialIndex = 1;
-		materials[2].materialIndex = 2;
-		materials[3].materialIndex = 3;
-	}
+	Simulator() {}
 	void initializeGrid(int sizeX, int sizeY) {
 		gSizeX = sizeX;
 		gSizeY = sizeY;
@@ -115,7 +106,7 @@ public:
 	void addParticles() {
 		for (int i = 0; i < 1000; i++) {
 			for (int j = 0; j < 1000; j++) {
-				Particle* p = new Particle(&materials[0], i*.3 +5.5, j*.3 + 5.5, 1, 0);
+				Particle* p = new Particle(i*.3 +5.5, j*.3 + 5.5, 1, 0);
 				p->initializeWeights(gSizeY);
 				particles.push_back(p);
 			}
@@ -124,7 +115,7 @@ public:
 	void update() {
 		// Reset grid nodes
 		int nActive = active.size();
-		#pragma omp parallel for
+#pragma omp parallel for
 		for (int i = 0; i < nActive; i++) {
 			active[i]->active = false;
 		}
@@ -134,10 +125,6 @@ public:
 		int nParticles = particles.size();
 		for (int pi = 0; pi < nParticles; pi++) {
 			Particle &p = *particles[pi];
-			float m =  p.mat->mass;
-			float mu = m * p.u;
-			float mv = m * p.v;
-			int mi = p.mat->materialIndex;
 			float *px = p.px;
 			float *gx = p.gx;
 			float *py = p.py;
@@ -151,22 +138,17 @@ public:
 					float gyj = gy[j];
 					float phi = pxi * pyj;
 					if (n->active) {
-						n->mass += phi * m;
-						n->particleDensity += phi;
-						n->u += phi * mu;
-						n->v += phi * mv;
-						n->cgx[mi] += gxi * pyj;
-						n->cgy[mi] += pxi * gyj;
+						n->mass += phi;
+						n->gx += gxi * pyj;
+						n->gy += pxi * gyj;
 					} else {
 						n->active = true;
 						active.push_back(n);
-						n->mass = phi * m;
-						n->particleDensity = phi;
-						n->u = phi * mu;
-						n->v = phi * mv;
-						memset(n->cgx, 0, 2 * numMaterials * sizeof(float));
-						n->cgx[mi] = gxi * pyj;
-						n->cgy[mi] = pxi * gyj;
+						n->mass = phi;
+						n->gx = gxi * pyj;
+						n->gy = pxi * gyj;
+						n->ax = 0;
+						n->ay = 0;
 					}
 				}
 			}
@@ -174,58 +156,17 @@ public:
 		
 		nActive = active.size();
 		
-		// Update node velocities and density gradient
-		#pragma omp parallel for
-		for (int i = 0; i < nActive; i++) {
-			Node& n = *active[i];
-			n.ax = n.ay = 0;
-			n.gx = 0;
-			n.gy = 0;
-			if (n.mass > 0) {
-				n.u /= n.mass;
-				n.v /= n.mass;
-				for (int j = 0; j < numMaterials; j++) {
-					n.gx += n.cgx[j];
-					n.gy += n.cgy[j];
-				}
-				for (int j = 0; j < numMaterials; j++) {
-					n.cgx[j] -= n.gx - n.cgx[j];
-					n.cgy[j] -= n.gy - n.cgy[j];
-				}
-			}
-		}
-		
 		// Calculate pressure and add forces to grid
-		#pragma omp parallel for
+#pragma omp parallel for
 		for (int pi = 0; pi < nParticles; pi++) {
 			Particle& p = *particles[pi];
-			Material& mat = *p.mat;
 			
-			float fx = 0, fy = 0, dudx = 0, dudy = 0, dvdx = 0, dvdy = 0, sx = 0, sy = 0;
+			float fx = 0, fy = 0;
 			Node* n = &grid[p.gi];
 			float *ppx = p.px;
 			float *pgx = p.gx;
 			float *ppy = p.py;
 			float *pgy = p.gy;
-			
-			int materialId = mat.materialIndex;
-			for (int i = 0; i < 3; i++, n += gSizeY_3) {
-				float pxi = ppx[i];
-				float gxi = pgx[i];
-				for (int j = 0; j < 3; j++, n++) {
-					float pyj = ppy[j];
-					float gyj = pgy[j];
-					float phi = pxi * pyj;
-					float gx = gxi * pyj;
-					float gy = pxi * gyj;
-					dudx += n->u * gx;
-					dudy += n->u * gy;
-					dvdx += n->v * gx;
-					dvdy += n->v * gy;
-					sx += phi * n->cgx[materialId];
-					sy += phi * n->cgy[materialId];
-				}
-			}
 			
 			int cx = (int)p.x;
 			int cy = (int)p.y;
@@ -235,48 +176,11 @@ public:
 			Node& n2 = grid[gi+1];
 			Node& n3 = grid[gi+gSizeY];
 			Node& n4 = grid[gi+gSizeY+1];
-			float density = uscip(n1.particleDensity, n1.gx, n1.gy, n2.particleDensity, n2.gx, n2.gy, n3.particleDensity, n3.gx, n3.gy, n4.particleDensity, n4.gx, n4.gy, p.x - cx, p.y - cy);
+			float density = uscip(n1.mass, n1.gx, n1.gy, n2.mass, n2.gx, n2.gy, n3.mass, n3.gx, n3.gy, n4.mass, n4.gx, n4.gy, p.x - cx, p.y - cy);
 			
 			float pressure = mat.stiffness / mat.restDensity * (density - mat.restDensity);
 			if (pressure > 2) {
 				pressure = 2;
-			}
-			
-			// Update stress tensor
-			float w1 = dudy - dvdx;
-			float wT0 = .5f * w1 * (p.T01 + p.T01);
-			float wT1 = .5f * w1 * (p.T00 - p.T11);
-			float D00 = dudx;
-			float D01 = .5f * (dudy + dvdx);
-			float D11 = dvdy;
-			float trace = .5f * (D00 + D11);
-			D00 -= trace;
-			D11 -= trace;
-			p.T00 += .5f * (-wT0 + D00 - mat.meltRate * p.T00);
-			p.T01 += .5f * (wT1 + D01 - mat.meltRate * p.T01);
-			p.T11 += .5f * (wT0 + D11 - mat.meltRate * p.T11);
-			
-			// Stress tensor fracture
-			float norm = p.T00 * p.T00 + 2 * p.T01 * p.T01 + p.T11 * p.T11;
-			
-			if (norm > mat.maxDeformation)
-			{
-				p.T00 = p.T01 = p.T11 = 0;
-			}
-			
-			float T00 = mat.mass * (mat.kElastic * p.T00 + mat.viscosity * D00 + pressure + trace * mat.bulkViscosity);
-			float T01 = mat.mass * (mat.kElastic * p.T01 + mat.viscosity * D01);
-			float T11 = mat.mass * (mat.kElastic * p.T11 + mat.viscosity * D11 + pressure + trace * mat.bulkViscosity);
-			
-			// Surface tension
-			float lenSq = sx * sx + sy * sy;
-			if (lenSq > 0)
-			{
-				float len = sqrtf(lenSq);
-				float a = mat.mass * mat.surfaceTension / len;
-				T00 -= a * (.5f * lenSq - sx * sx);
-				T01 -= a * (-sx * sy);
-				T11 -= a * (.5f * lenSq - sy * sy);
 			}
 			
 			// Wall force
@@ -303,14 +207,14 @@ public:
 					
 					float gx = gxi * pyj;
 					float gy = pxi * gyj;
-					n->ax += -(gx * T00 + gy * T01) + fx * phi;
-					n->ay += -(gx * T01 + gy * T11) + fy * phi;
+					n->ax += -(gx * pressure) + fx * phi;
+					n->ay += -(gy * pressure) + fy * phi;
 				}
 			}
 		}
 		
 		// Update acceleration of nodes
-		#pragma omp parallel for
+#pragma omp parallel for
 		for (int i = 0; i < nActive; i++) {
 			Node& n = *active[i];
 			n.u = 0;
@@ -321,7 +225,7 @@ public:
 			}
 		}
 		
-		#pragma omp parallel for
+#pragma omp parallel for
 		for (int pi = 0; pi < nParticles; pi++) {
 			Particle& p = *particles[pi];
 			
@@ -341,10 +245,6 @@ public:
 			
 			p.v += .03;
 			
-			float m =  p.mat->mass;
-			float mu = m * p.u;
-			float mv = m * p.v;
-			
 			// Add particle velocities back to the grid
 			n = &grid[p.gi];
 			for (int i = 0; i < 3; i++, n += gSizeY_3) {
@@ -352,14 +252,14 @@ public:
 				for (int j = 0; j < 3; j++, n++) {
 					float pyj = py[j];
 					float phi = pxi * pyj;
-					n->u += phi * mu;
-					n->v += phi * mv;
+					n->u += phi * p.u;
+					n->v += phi * p.v;
 				}
 			}
 		}
 		
 		// Update node velocities
-		#pragma omp parallel for
+#pragma omp parallel for
 		for (int i = 0; i < nActive; i++) {
 			Node& n = *active[i];
 			if (n.mass > 0) {
@@ -369,7 +269,7 @@ public:
 		}
 		
 		// Advect particles
-		#pragma omp parallel for
+#pragma omp parallel for
 		for (int pi = 0; pi < nParticles; pi++) {
 			Particle& p = *particles[pi];
 			
@@ -381,10 +281,8 @@ public:
 			float* pgy = p.gy;
 			for (int i = 0; i < 3; i++, n += gSizeY_3) {
 				float pxi = ppx[i];
-				float gxi = pgx[i];
 				for (int j = 0; j < 3; j++, n++) {
 					float pyj = ppy[j];
-					float gyj = pgy[j];
 					float phi = pxi * pyj;
 					gu += phi * n->u;
 					gv += phi * n->v;
