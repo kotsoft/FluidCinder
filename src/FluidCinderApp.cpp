@@ -2,6 +2,7 @@
 #include "cinder/gl/gl.h"
 #include "Simulator.cpp"
 #include <vector>
+#include <omp.h>
 
 using namespace ci;
 using namespace ci::app;
@@ -14,11 +15,12 @@ class FluidCinderApp : public AppBasic {
 	void mouseDown( MouseEvent event );	
 	void update();
 	void draw();
+	void prepareSettings(Settings *settings);
 };
 
 void FluidCinderApp::setup()
 {
-	s.initializeGrid(30,30);
+	s.initializeGrid(400,400);
 	s.addParticles();
 }
 
@@ -40,9 +42,14 @@ void FluidCinderApp::draw()
 	vector<Particle*>& particles = s.particles;
 	int nParticles = particles.size();
 	for (int i = 0; i < nParticles; i++) {
-		gl::vertex(particles[i]->x*10, particles[i]->y*10);
+		gl::vertex(particles[i]->x*3, particles[i]->y*3);
 	}
 	gl::end();
+}
+
+void FluidCinderApp::prepareSettings( Settings *settings ) {
+	settings->setWindowSize( 1200, 1200 );
+    settings->setFrameRate( 60.0f );
 }
 
 
