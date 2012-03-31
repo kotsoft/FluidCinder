@@ -14,7 +14,7 @@ struct Material {
 	float mass, restDensity, stiffness, bulkViscosity, surfaceTension, kElastic, maxDeformation, meltRate, viscosity, damping, friction, stickiness, smoothing, gravity;
 	int materialIndex;
 	
-	Material() : mass(1), restDensity(3), stiffness(1), bulkViscosity(1), surfaceTension(0), kElastic(0), maxDeformation(0), meltRate(0), viscosity(0), damping(0), friction(0), stickiness(0), smoothing(0), gravity(.05) {};
+	Material() : mass(1), restDensity(3), stiffness(1), bulkViscosity(1), surfaceTension(.1), kElastic(1), maxDeformation(0), meltRate(0), viscosity(0), damping(0), friction(0), stickiness(0), smoothing(0), gravity(.05) {};
 };
 
 struct Particle {
@@ -85,9 +85,14 @@ public:
 		}
 	}
 	void addParticles() {
-		for (int i = 0; i < 200; i++) {
+		for (int i = 0; i < 100; i++) {
 			for (int j = 0; j < 1000; j++) {
 				particles.push_back(new Particle(&materials[0], i*.3 +5.5, j*.3 + 5.5));
+			}
+		}
+		for (int i = 100; i < 200; i++) {
+			for (int j = 0; j < 1000; j++) {
+				particles.push_back(new Particle(&materials[1], i*.3 +5.5, j*.3 + 5.5));
 			}
 		}
 	}
@@ -169,20 +174,31 @@ public:
 		#pragma omp parallel for
 		for (int pi = 0; pi < nParticles; pi++) {
 			Particle& p = *particles[pi];
+			Material& mat = *p.mat;
 			
 			float fx = 0, fy = 0, dudx = 0, dudy = 0, dvdx = 0, dvdy = 0, sx = 0, sy = 0;
 			Node* n = &grid[p.gi];
-			float *px = p.px;
-			float *gx = p.gx;
-			float *py = p.py;
-			float *gy = p.gy;
+			float *ppx = p.px;
+			float *pgx = p.gx;
+			float *ppy = p.py;
+			float *pgy = p.gy;
+			
+			int materialId = mat.materialIndex;
 			for (int i = 0; i < 3; i++, n += gSizeY_3) {
-				float pxi = px[i];
-				float gxi = gx[i];
+				float pxi = ppx[i];
+				float gxi = pgx[i];
 				for (int j = 0; j < 3; j++, n++) {
-					float pyj = py[j];
-					float gyj = gy[j];
+					float pyj = ppy[j];
+					float gyj = pgy[j];
 					float phi = pxi * pyj;
+					float gx = gxi * pyj;
+					float gy = pxi * gyj;
+					dudx += n->u * gx;
+					dudy += n->u * gy;
+					dvdx += n->v * gx;
+					dvdy += n->v * gy;
+					sx += phi * n->cgx[materialId];
+					sy += phi * n->cgy[materialId];
 				}
 			}
 			
@@ -196,11 +212,49 @@ public:
 			Node& n4 = grid[gi+gSizeY+1];
 			float density = uscip(n1.particleDensity, n1.gx, n1.gy, n2.particleDensity, n2.gx, n2.gy, n3.particleDensity, n3.gx, n3.gy, n4.particleDensity, n4.gx, n4.gy, p.x - cx, p.y - cy);
 			
-			float pressure = p.mat->stiffness / p.mat->restDensity * (density - p.mat->restDensity);
+			float pressure = mat.stiffness / mat.restDensity * (density - mat.restDensity);
 			if (pressure > 2) {
 				pressure = 2;
 			}
 			
+			// Update stress tensor
+			float w1 = dudy - dvdx;
+			float wT0 = .5f * w1 * (p.T01 + p.T01);
+			float wT1 = .5f * w1 * (p.T00 - p.T11);
+			float D00 = dudx;
+			float D01 = .5f * (dudy + dvdx);
+			float D11 = dvdy;
+			float trace = .5f * (D00 + D11);
+			D00 -= trace;
+			D11 -= trace;
+			p.T00 += .5f * (-wT0 + D00 - mat.meltRate * p.T00);
+			p.T01 += .5f * (wT1 + D01 - mat.meltRate * p.T01);
+			p.T11 += .5f * (wT0 + D11 - mat.meltRate * p.T11);
+			
+			// Stress tensor fracture
+			float norm = p.T00 * p.T00 + 2 * p.T01 * p.T01 + p.T11 * p.T11;
+			
+			if (norm > mat.maxDeformation)
+			{
+				p.T00 = p.T01 = p.T11 = 0;
+			}
+			
+			float T00 = mat.mass * (mat.kElastic * p.T00 + mat.viscosity * D00 + pressure + trace * mat.bulkViscosity);
+			float T01 = mat.mass * (mat.kElastic * p.T01 + mat.viscosity * D01);
+			float T11 = mat.mass * (mat.kElastic * p.T11 + mat.viscosity * D11 + pressure + trace * mat.bulkViscosity);
+			
+			// Surface tension
+			float lenSq = sx * sx + sy * sy;
+			if (lenSq > 0)
+			{
+				float len = sqrtf(lenSq);
+				float a = mat.mass * mat.surfaceTension / len;
+				T00 -= a * (.5f * lenSq - sx * sx);
+				T01 -= a * (-sx * sy);
+				T11 -= a * (.5f * lenSq - sy * sy);
+			}
+			
+			// Wall force
 			if (p.x < 4) {
 				fx += (4 - p.x);
 			} else if (p.x > gSizeX - 5) {
@@ -212,19 +266,20 @@ public:
 				fy += (gSizeY - 5 - p.y);
 			}
 			
+			// Add forces to grid
 			n = &grid[p.gi];
 			for (int i = 0; i < 3; i++, n += gSizeY_3) {
-				float pxi = px[i];
-				float gxi = gx[i];
+				float pxi = ppx[i];
+				float gxi = pgx[i];
 				for (int j = 0; j < 3; j++, n++) {
-					float pyj = py[j];
-					float gyj = gy[j];
+					float pyj = ppy[j];
+					float gyj = pgy[j];
 					float phi = pxi * pyj;
 					
-					float gxm = gxi * pyj;
-					float gym = pxi * gyj;
-					n->ax += -gxm * pressure + fx*phi;
-					n->ay += -gym * pressure + fy*phi;
+					float gx = gxi * pyj;
+					float gy = pxi * gyj;
+					n->ax += -(gx * T00 + gy * T01) + fx * phi;
+					n->ay += -(gx * T01 + gy * T11) + fy * phi;
 				}
 			}
 		}
@@ -295,14 +350,16 @@ public:
 			
 			float gu = 0, gv = 0;
 			Node* n = &grid[p.gi];
-			float *px = p.px;
-			float *py = p.py;
-			float* gx = p.gx;
-			float* gy = p.gy;
+			float *ppx = p.px;
+			float *ppy = p.py;
+			float* pgx = p.gx;
+			float* pgy = p.gy;
 			for (int i = 0; i < 3; i++, n += gSizeY_3) {
-				float pxi = px[i];
+				float pxi = ppx[i];
+				float gxi = pgx[i];
 				for (int j = 0; j < 3; j++, n++) {
-					float pyj = py[j];
+					float pyj = ppy[j];
+					float gyj = pgy[j];
 					float phi = pxi * pyj;
 					gu += phi * n->u;
 					gv += phi * n->v;
@@ -341,23 +398,23 @@ public:
 			float y = cy - ky;
 			
 			// Quadratic interpolation kernel - Don't change these constants
-			px[0] = .5f * x * x + 1.5f * x + 1.125f;
-			gx[0] = x + 1.5f;
+			ppx[0] = .5f * x * x + 1.5f * x + 1.125f;
+			pgx[0] = x + 1.5f;
 			x++;
-			px[1] = -x * x + .75f;
-			gx[1] = -2 * x;
+			ppx[1] = -x * x + .75f;
+			pgx[1] = -2 * x;
 			x++;
-			px[2] = .5f * x * x - 1.5f * x + 1.125f;
-			gx[2] = x - 1.5f;
+			ppx[2] = .5f * x * x - 1.5f * x + 1.125f;
+			pgx[2] = x - 1.5f;
 			
-			py[0] = .5f * y * y + 1.5f * y + 1.125f;
-			gy[0] = y + 1.5f;
+			ppy[0] = .5f * y * y + 1.5f * y + 1.125f;
+			pgy[0] = y + 1.5f;
 			y++;
-			py[1] = -y * y + .75f;
-			gy[1] = -2 * y;
+			ppy[1] = -y * y + .75f;
+			pgy[1] = -2 * y;
 			y++;
-			py[2] = .5f * y * y - 1.5f * y + 1.125f;
-			gy[2] = y - 1.5f;
+			ppy[2] = .5f * y * y - 1.5f * y + 1.125f;
+			pgy[2] = y - 1.5f;
 		}
 	}
 };
