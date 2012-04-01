@@ -24,7 +24,7 @@ class FluidCinderApp : public AppBasic {
 
 void FluidCinderApp::setup()
 {
-	s.initializeGrid(800,400);
+	s.initializeGrid(400,200);
 	s.addParticles();
 	n = s.particles.size();
 	gl::VboMesh::Layout layout;
@@ -52,10 +52,10 @@ void FluidCinderApp::draw()
 	float* vi = vertices;
 	for (int i = 0; i < nParticles; i++) {
 		Particle& p = particles[i];
-		*(vi++) = p.x*2;
-		*(vi++) = p.y*2;
-		*(vi++) = (p.x-p.gu)*2;
-		*(vi++) = (p.y-p.gv)*2;
+		*(vi++) = p.x*4;
+		*(vi++) = p.y*4;
+		*(vi++) = (p.x-p.gu)*4;
+		*(vi++) = (p.y-p.gv)*4;
 	}
 	
 	glEnable(GL_LINE_SMOOTH);
@@ -71,6 +71,7 @@ void FluidCinderApp::draw()
 
 void FluidCinderApp::prepareSettings( Settings *settings ) {
 	settings->setWindowSize( 1600, 800 );
+	settings->setFrameRate(60.0f);
 }
 
 

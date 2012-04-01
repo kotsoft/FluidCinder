@@ -15,7 +15,7 @@ struct Material {
 	float mass, restDensity, stiffness, bulkViscosity, surfaceTension, kElastic, maxDeformation, meltRate, viscosity, damping, friction, stickiness, smoothing, gravity;
 	int materialIndex;
 	
-	Material() : mass(1), restDensity(1), stiffness(1), bulkViscosity(1), surfaceTension(0), kElastic(0), maxDeformation(0), meltRate(0), viscosity(0), damping(0), friction(0), stickiness(0), smoothing(.01), gravity(.05) {};
+	Material() : mass(1), restDensity(1), stiffness(1), bulkViscosity(1), surfaceTension(0), kElastic(0), maxDeformation(0), meltRate(0), viscosity(0), damping(.001), friction(0), stickiness(0), smoothing(.01), gravity(.05) {};
 };
 
 struct Particle {
@@ -114,8 +114,8 @@ public:
 		}
 	}
 	void addParticles() {
-		for (int i = 0; i < 300; i++) {
-			for (int j = 0; j < 300; j++) {
+		for (int i = 0; i < 200; i++) {
+			for (int j = 0; j < 200; j++) {
 				Particle p(&materials[0], i*.7 +5.5, j*.7 + 5.5);
 				p.initializeWeights(gSizeY);
 				particles.push_back(p);
