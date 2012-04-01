@@ -15,7 +15,7 @@ struct Material {
 	float mass, restDensity, stiffness, bulkViscosity, surfaceTension, kElastic, maxDeformation, meltRate, viscosity, damping, friction, stickiness, smoothing, gravity;
 	int materialIndex;
 	
-	Material() : mass(1), restDensity(1), stiffness(1), bulkViscosity(1), surfaceTension(0), kElastic(0), maxDeformation(0), meltRate(0), viscosity(0), damping(.001), friction(0), stickiness(0), smoothing(.01), gravity(.05) {};
+	Material() : mass(1), restDensity(1), stiffness(1), bulkViscosity(1), surfaceTension(0), kElastic(0), maxDeformation(0), meltRate(0), viscosity(.02), damping(.001), friction(0), stickiness(0), smoothing(.02), gravity(.03) {};
 };
 
 struct Particle {
@@ -69,11 +69,13 @@ struct Particle {
 };
 
 struct Node {
-	float mass, particleDensity, gx, gy, u, v, ax, ay;
+	float mass, particleDensity, gx, gy, u, v, u2, v2, ax, ay;
 	float cgx[numMaterials];
 	float cgy[numMaterials];
 	bool active;
-	Node() : active(false) {}
+	Node() : mass(0), particleDensity(0), gx(0), gy(0), u(0), v(0), u2(0), v2(0), ax(0), ay(0), active(false) {
+		memset(cgx, 0, 2 * numMaterials * sizeof(float));
+	}
 };
 
 class Simulator {
@@ -114,7 +116,7 @@ public:
 		}
 	}
 	void addParticles() {
-		for (int i = 0; i < 200; i++) {
+		for (int i = 0; i < 300; i++) {
 			for (int j = 0; j < 200; j++) {
 				Particle p(&materials[0], i*.7 +5.5, j*.7 + 5.5);
 				p.initializeWeights(gSizeY);
@@ -143,28 +145,18 @@ public:
 					float pyj = py[j];
 					float gyj = gy[j];
 					float phi = pxi * pyj;
-					if (n->active) {
-						n->mass += phi * m;
-						n->particleDensity += phi;
-						n->u += phi * mu;
-						n->v += phi * mv;
-						n->cgx[mi] += gxi * pyj;
-						n->cgy[mi] += pxi * gyj;
-					} else {
-						n->active = true;
-						n->mass = phi * m;
-						n->particleDensity = phi;
-						n->u = phi * mu;
-						n->v = phi * mv;
-						memset(n->cgx, 0, 2 * numMaterials * sizeof(float));
-						n->cgx[mi] = gxi * pyj;
-						n->cgy[mi] = pxi * gyj;
-					}
+					n->mass += phi * m;
+					n->particleDensity += phi;
+					n->u += phi * mu;
+					n->v += phi * mv;
+					n->cgx[mi] += gxi * pyj;
+					n->cgy[mi] += pxi * gyj;
+					n->active = true;
 				}
 			}
 		}
 		
-		// Find active nodes
+		// Add active nodes to list
 		active.clear();
 		Node* gi = grid;
 		int gSizeXY = gSizeX * gSizeY;
@@ -214,10 +206,13 @@ public:
 					float phi = pxi * pyj;
 					float gx = gxi * pyj;
 					float gy = pxi * gyj;
+					// Velocity gradient
 					dudx += n->u * gx;
 					dudy += n->u * gy;
 					dvdx += n->v * gx;
 					dvdy += n->v * gy;
+					
+					// Surface tension
 					sx += phi * n->cgx[materialId];
 					sy += phi * n->cgy[materialId];
 				}
@@ -309,8 +304,8 @@ public:
 		#pragma omp parallel for
 		for (int i = 0; i < nActive; i++) {
 			Node& n = *active[i];
-			n.u = 0;
-			n.v = 0;
+			n.u2 = 0;
+			n.v2 = 0;
 			n.ax /= n.mass;
 			n.ay /= n.mass;
 		}
@@ -348,8 +343,8 @@ public:
 				for (int j = 0; j < 3; j++, n++) {
 					float pyj = py[j];
 					float phi = pxi * pyj;
-					n->u += phi * mu;
-					n->v += phi * mv;
+					n->u2 += phi * mu;
+					n->v2 += phi * mv;
 				}
 			}
 		}
@@ -358,8 +353,14 @@ public:
 		#pragma omp parallel for
 		for (int i = 0; i < nActive; i++) {
 			Node& n = *active[i];
-			n.u /= n.mass;
-			n.v /= n.mass;
+			n.u2 /= n.mass;
+			n.v2 /= n.mass;
+			
+			n.mass = 0;
+			n.particleDensity = 0;
+			n.u = 0;
+			n.v = 0;
+			memset(n.cgx, 0, 2 * numMaterials * sizeof(float));
 		}
 		
 		// Advect particles
@@ -381,19 +382,20 @@ public:
 					float pyj = ppy[j];
 					float gyj = pgy[j];
 					float phi = pxi * pyj;
-					gu += phi * n->u;
-					gv += phi * n->v;
+					gu += phi * n->u2;
+					gv += phi * n->v2;
 					float gx = gxi * pyj;
 					float gy = pxi * gyj;
-					dudx += n->u * gx;
-					dudy += n->u * gy;
-					dvdx += n->v * gx;
-					dvdy += n->v * gy;
+					// Velocity gradient
+					dudx += n->u2 * gx;
+					dudy += n->u2 * gy;
+					dvdx += n->v2 * gx;
+					dvdy += n->v2 * gy;
 				}
 			}
 			
+			// Update stress tensor
 			float w1 = dudy - dvdx;
-			
 			float wT0 = .5f * w1 * (p.T01 + p.T01);
 			float wT1 = .5f * w1 * (p.T00 - p.T11);
 			float D00 = dudx;
