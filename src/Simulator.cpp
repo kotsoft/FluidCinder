@@ -15,7 +15,7 @@ struct Material {
 	float mass, restDensity, stiffness, bulkViscosity, surfaceTension, kElastic, maxDeformation, meltRate, viscosity, damping, friction, stickiness, smoothing, gravity;
 	int materialIndex;
 	
-	Material() : mass(1), restDensity(1), stiffness(1), bulkViscosity(1), surfaceTension(0), kElastic(0), maxDeformation(0), meltRate(0), viscosity(.02), damping(.001), friction(0), stickiness(0), smoothing(.02), gravity(.03) {};
+	Material() : mass(1), restDensity(2), stiffness(1), bulkViscosity(1), surfaceTension(0), kElastic(0), maxDeformation(0), meltRate(0), viscosity(.02), damping(.001), friction(0), stickiness(0), smoothing(.02), gravity(.03) {};
 };
 
 struct Particle {
@@ -117,18 +117,112 @@ public:
 	}
 	void addParticles() {
 		for (int i = 0; i < 300; i++) {
-			for (int j = 0; j < 200; j++) {
-				Particle p(&materials[0], i*.7 +5.5, j*.7 + 5.5);
+			for (int j = 0; j < 1000; j++) {
+				Particle p(&materials[0], i*.35 +5.5, j*.7/5 + 5.5);
 				p.initializeWeights(gSizeY);
 				particles.push_back(p);
 			}
 		}
 	}
 	void update() {
-		// Add particle mass, velocity and density gradient to grid
 		int nParticles = particles.size();
+		#pragma omp parallel for
 		for (int pi = 0; pi < nParticles; pi++) {
 			Particle &p = particles[pi];
+			Material& mat = *p.mat;
+			
+			float gu = 0, gv = 0, dudx = 0, dudy = 0, dvdx = 0, dvdy = 0;
+			Node* n = &grid[p.gi];
+			float *ppx = p.px;
+			float *ppy = p.py;
+			float* pgx = p.gx;
+			float* pgy = p.gy;
+			for (int i = 0; i < 3; i++, n += gSizeY_3) {
+				float pxi = ppx[i];
+				float gxi = pgx[i];
+				for (int j = 0; j < 3; j++, n++) {
+					float pyj = ppy[j];
+					float gyj = pgy[j];
+					float phi = pxi * pyj;
+					gu += phi * n->u2;
+					gv += phi * n->v2;
+					float gx = gxi * pyj;
+					float gy = pxi * gyj;
+					// Velocity gradient
+					dudx += n->u2 * gx;
+					dudy += n->u2 * gy;
+					dvdx += n->v2 * gx;
+					dvdy += n->v2 * gy;
+				}
+			}
+			
+			// Update stress tensor
+			float w1 = dudy - dvdx;
+			float wT0 = .5f * w1 * (p.T01 + p.T01);
+			float wT1 = .5f * w1 * (p.T00 - p.T11);
+			float D00 = dudx;
+			float D01 = .5f * (dudy + dvdx);
+			float D11 = dvdy;
+			float trace = .5f * (D00 + D11);
+			p.T00 += .5f * (-wT0 + (D00 - trace) - mat.meltRate * p.T00);
+			p.T01 += .5f * (wT1 + D01 - mat.meltRate * p.T01);
+			p.T11 += .5f * (wT0 + (D11 - trace) - mat.meltRate * p.T11);
+			
+			float norm = p.T00 * p.T00 + 2 * p.T01 * p.T01 + p.T11 * p.T11;
+			
+			if (norm > mat.maxDeformation)
+			{
+				p.T00 = p.T01 = p.T11 = 0;
+			}
+			
+			p.x += gu;
+			p.y += gv;
+			
+			p.gu = gu;
+			p.gv = gv;
+			
+			p.u += mat.smoothing*(gu-p.u);
+			p.v += mat.smoothing*(gv-p.v);
+			
+			// Hard boundary correction (Random numbers keep it from clustering)
+			if (p.x < 1) {
+				p.x = 1 + .01*rand()/RAND_MAX;
+			} else if (p.x > gSizeX - 2) {
+				p.x = gSizeX - 2 - .01*rand()/RAND_MAX;
+			}
+			if (p.y < 1) {
+				p.y = 1 + .01*rand()/RAND_MAX;
+			} else if (p.y > gSizeY - 2) {
+				p.y = gSizeY - 2 - .01*rand()/RAND_MAX;
+			}
+			
+			// Update grid cell index and kernel weights
+			int cx = p.cx = (int)(p.x - .5f);
+			int cy = p.cy = (int)(p.y - .5f);
+			p.gi = cx * gSizeY + cy;
+			
+			float x = cx - p.x;
+			float y = cy - p.y;
+			
+			// Quadratic interpolation kernel weights - Not meant to be changed
+			ppx[0] = .5f * x * x + 1.5f * x + 1.125f;
+			pgx[0] = x + 1.5f;
+			x++;
+			ppx[1] = -x * x + .75f;
+			pgx[1] = -2 * x;
+			x++;
+			ppx[2] = .5f * x * x - 1.5f * x + 1.125f;
+			pgx[2] = x - 1.5f;
+			
+			ppy[0] = .5f * y * y + 1.5f * y + 1.125f;
+			pgy[0] = y + 1.5f;
+			y++;
+			ppy[1] = -y * y + .75f;
+			pgy[1] = -2 * y;
+			y++;
+			ppy[2] = .5f * y * y - 1.5f * y + 1.125f;
+			pgy[2] = y - 1.5f;
+			
 			float m =  p.mat->mass;
 			float mu = m * p.u;
 			float mv = m * p.v;
@@ -137,7 +231,7 @@ public:
 			float *gx = p.gx;
 			float *py = p.py;
 			float *gy = p.gy;
-			Node* n = &grid[p.gi];
+			n = &grid[p.gi];
 			for (int i = 0; i < 3; i++, n += gSizeY_3) {
 				float pxi = px[i];
 				float gxi = gx[i];
@@ -145,6 +239,7 @@ public:
 					float pyj = py[j];
 					float gyj = gy[j];
 					float phi = pxi * pyj;
+					// Add particle mass, velocity and density gradient to grid
 					n->mass += phi * m;
 					n->particleDensity += phi;
 					n->u += phi * mu;
@@ -160,7 +255,8 @@ public:
 		active.clear();
 		Node* gi = grid;
 		int gSizeXY = gSizeX * gSizeY;
-		for (int i = 0; i < gSizeXY; i++, gi++) {
+		
+		for (int i = 0; i < gSizeXY; i++) {
 			Node& n = *(gi);
 			if (n.active && n.mass > 0) {
 				active.push_back(gi);
@@ -179,6 +275,7 @@ public:
 					n.cgy[j] -= n.gy - n.cgy[j];
 				}
 			}
+			gi++;
 		}
 		
 		int nActive = active.size();
@@ -361,105 +458,6 @@ public:
 			n.u = 0;
 			n.v = 0;
 			memset(n.cgx, 0, 2 * numMaterials * sizeof(float));
-		}
-		
-		// Advect particles
-		#pragma omp parallel for
-		for (int pi = 0; pi < nParticles; pi++) {
-			Particle& p = particles[pi];
-			Material& mat = *p.mat;
-			
-			float gu = 0, gv = 0, dudx = 0, dudy = 0, dvdx = 0, dvdy = 0;
-			Node* n = &grid[p.gi];
-			float *ppx = p.px;
-			float *ppy = p.py;
-			float* pgx = p.gx;
-			float* pgy = p.gy;
-			for (int i = 0; i < 3; i++, n += gSizeY_3) {
-				float pxi = ppx[i];
-				float gxi = pgx[i];
-				for (int j = 0; j < 3; j++, n++) {
-					float pyj = ppy[j];
-					float gyj = pgy[j];
-					float phi = pxi * pyj;
-					gu += phi * n->u2;
-					gv += phi * n->v2;
-					float gx = gxi * pyj;
-					float gy = pxi * gyj;
-					// Velocity gradient
-					dudx += n->u2 * gx;
-					dudy += n->u2 * gy;
-					dvdx += n->v2 * gx;
-					dvdy += n->v2 * gy;
-				}
-			}
-			
-			// Update stress tensor
-			float w1 = dudy - dvdx;
-			float wT0 = .5f * w1 * (p.T01 + p.T01);
-			float wT1 = .5f * w1 * (p.T00 - p.T11);
-			float D00 = dudx;
-			float D01 = .5f * (dudy + dvdx);
-			float D11 = dvdy;
-			float trace = .5f * (D00 + D11);
-			p.T00 += .5f * (-wT0 + (D00 - trace) - mat.meltRate * p.T00);
-			p.T01 += .5f * (wT1 + D01 - mat.meltRate * p.T01);
-			p.T11 += .5f * (wT0 + (D11 - trace) - mat.meltRate * p.T11);
-			
-			float norm = p.T00 * p.T00 + 2 * p.T01 * p.T01 + p.T11 * p.T11;
-			
-			if (norm > mat.maxDeformation)
-			{
-				p.T00 = p.T01 = p.T11 = 0;
-			}
-			
-			p.x += gu;
-			p.y += gv;
-			
-			p.gu = gu;
-			p.gv = gv;
-			
-			p.u += mat.smoothing*(gu-p.u);
-			p.v += mat.smoothing*(gv-p.v);
-			
-			// Hard boundary correction (Random numbers keep it from clustering)
-			if (p.x < 1) {
-				p.x = 1 + .01*rand()/RAND_MAX;
-			} else if (p.x > gSizeX - 2) {
-				p.x = gSizeX - 2 - .01*rand()/RAND_MAX;
-			}
-			if (p.y < 1) {
-				p.y = 1 + .01*rand()/RAND_MAX;
-			} else if (p.y > gSizeY - 2) {
-				p.y = gSizeY - 2 - .01*rand()/RAND_MAX;
-			}
-			
-			// Update grid cell index and kernel weights
-			int cx = p.cx = (int)(p.x - .5f);
-			int cy = p.cy = (int)(p.y - .5f);
-			p.gi = cx * gSizeY + cy;
-			
-			float x = cx - p.x;
-			float y = cy - p.y;
-			
-			// Quadratic interpolation kernel weights - Not meant to be changed
-			ppx[0] = .5f * x * x + 1.5f * x + 1.125f;
-			pgx[0] = x + 1.5f;
-			x++;
-			ppx[1] = -x * x + .75f;
-			pgx[1] = -2 * x;
-			x++;
-			ppx[2] = .5f * x * x - 1.5f * x + 1.125f;
-			pgx[2] = x - 1.5f;
-			
-			ppy[0] = .5f * y * y + 1.5f * y + 1.125f;
-			pgy[0] = y + 1.5f;
-			y++;
-			ppy[1] = -y * y + .75f;
-			pgy[1] = -2 * y;
-			y++;
-			ppy[2] = .5f * y * y - 1.5f * y + 1.125f;
-			pgy[2] = y - 1.5f;
 		}
 	}
 };
