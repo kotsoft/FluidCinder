@@ -13,7 +13,7 @@ using namespace std;
 struct Material {
 	float restDensity, stiffness, bulkViscosity, surfaceTension, viscosity, damping, friction, stickiness, smoothing, gravity;
 	
-	Material() : restDensity(10), stiffness(1), bulkViscosity(1), surfaceTension(.01), viscosity(0), damping(0), friction(0), stickiness(0), smoothing(0), gravity(.05) {};
+	Material() : restDensity(1), stiffness(1), bulkViscosity(1), surfaceTension(.01), viscosity(0), damping(0), friction(0), stickiness(0), smoothing(1), gravity(.03) {};
 };
 
 struct Particle {
@@ -104,8 +104,8 @@ public:
 		}
 	}
 	void addParticles() {
-		for (int i = 0; i < 1000; i++) {
-			for (int j = 0; j < 1000; j++) {
+		for (int i = 0; i < 500; i++) {
+			for (int j = 0; j < 500; j++) {
 				Particle* p = new Particle(i*.3 +5.5, j*.3 + 5.5, 1, 0);
 				p->initializeWeights(gSizeY);
 				particles.push_back(p);
@@ -243,7 +243,7 @@ public:
 				}
 			}
 			
-			p.v += .03;
+			p.v += mat.gravity;
 			
 			// Add particle velocities back to the grid
 			n = &grid[p.gi];
@@ -292,8 +292,8 @@ public:
 			p.x += gu;
 			p.y += gv;
 			
-			p.u += .1*(gu-p.u);
-			p.v += .1*(gv-p.v);
+			p.u += mat.smoothing*(gu-p.u);
+			p.v += mat.smoothing*(gv-p.v);
 			
 			// Hard boundary correction (Random numbers keep it from clustering)
 			if (p.x < 1) {
