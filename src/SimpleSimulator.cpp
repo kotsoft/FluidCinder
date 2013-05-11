@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <math.h>
+#include <cstdlib>
 using namespace std;
 
 struct Material {
