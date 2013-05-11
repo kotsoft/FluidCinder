@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "cinder/gl/Vbo.h"
-#include <omp.h>
+//#include <omp.h>
 
 using namespace ci;
 using namespace ci::app;
