@@ -21,7 +21,39 @@
 		8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */; };
 		9C7ECB5F152518F100A4346A /* Simulator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9C7ECB5E152518F100A4346A /* Simulator.cpp */; };
 		9CE9F67815272AED00D6A33E /* SimpleSimulator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9CE9F67715272AED00D6A33E /* SimpleSimulator.cpp */; };
+		F7F8A97C173E337C005DDE07 /* libcinder_d.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F7F8A974173E3350005DDE07 /* libcinder_d.a */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		F7F8A973173E3350005DDE07 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F7F8A96D173E334F005DDE07 /* cinder.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = D2AAC07E0554694100DB518D;
+			remoteInfo = cinder;
+		};
+		F7F8A975173E3350005DDE07 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F7F8A96D173E334F005DDE07 /* cinder.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 007050BE1114F93F003FCAE4;
+			remoteInfo = cinder_iphone;
+		};
+		F7F8A977173E3350005DDE07 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F7F8A96D173E334F005DDE07 /* cinder.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 00CFD9E11135C3520091E310;
+			remoteInfo = cinder_iphone_sim;
+		};
+		F7F8A97A173E3376005DDE07 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F7F8A96D173E334F005DDE07 /* cinder.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = D2AAC07D0554694100DB518D;
+			remoteInfo = cinder;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		0091D8F80E81B9330029341E /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = /System/Library/Frameworks/OpenGL.framework; sourceTree = "<absolute>"; };
@@ -44,6 +76,7 @@
 		8D1107320486CEB800E47090 /* FluidCinder.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FluidCinder.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9C7ECB5E152518F100A4346A /* Simulator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Simulator.cpp; path = ../src/Simulator.cpp; sourceTree = "<group>"; };
 		9CE9F67715272AED00D6A33E /* SimpleSimulator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SimpleSimulator.cpp; path = ../src/SimpleSimulator.cpp; sourceTree = "<group>"; };
+		F7F8A96D173E334F005DDE07 /* cinder.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = cinder.xcodeproj; path = ../Cinder/xcode/cinder.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -51,6 +84,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F7F8A97C173E337C005DDE07 /* libcinder_d.a in Frameworks */,
 				8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */,
 				0091D8F90E81B9330029341E /* OpenGL.framework in Frameworks */,
 				53E3CDFC0E86099300238D2B /* Carbon.framework in Frameworks */,
@@ -120,6 +154,7 @@
 				29B97317FDCFA39411CA2CEA /* Resources */,
 				29B97323FDCFA39411CA2CEA /* Frameworks */,
 				19C28FACFE9D520D11CA2CBB /* Products */,
+				F7F8A979173E335F005DDE07 /* Cinder */,
 			);
 			name = FluidCinder;
 			sourceTree = "<group>";
@@ -150,6 +185,24 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		F7F8A96E173E334F005DDE07 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F7F8A974173E3350005DDE07 /* libcinder_d.a */,
+				F7F8A976173E3350005DDE07 /* libcinder-iphone_d.a */,
+				F7F8A978173E3350005DDE07 /* libcinder-iphone-sim_d.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		F7F8A979173E335F005DDE07 /* Cinder */ = {
+			isa = PBXGroup;
+			children = (
+				F7F8A96D173E334F005DDE07 /* cinder.xcodeproj */,
+			);
+			name = Cinder;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -164,6 +217,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				F7F8A97B173E3376005DDE07 /* PBXTargetDependency */,
 			);
 			name = FluidCinder;
 			productInstallPath = "$(HOME)/Applications";
@@ -188,12 +242,42 @@
 			);
 			mainGroup = 29B97314FDCFA39411CA2CEA /* FluidCinder */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = F7F8A96E173E334F005DDE07 /* Products */;
+					ProjectRef = F7F8A96D173E334F005DDE07 /* cinder.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				8D1107260486CEB800E47090 /* FluidCinder */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		F7F8A974173E3350005DDE07 /* libcinder_d.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libcinder_d.a;
+			remoteRef = F7F8A973173E3350005DDE07 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		F7F8A976173E3350005DDE07 /* libcinder-iphone_d.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = "libcinder-iphone_d.a";
+			remoteRef = F7F8A975173E3350005DDE07 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		F7F8A978173E3350005DDE07 /* libcinder-iphone-sim_d.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = "libcinder-iphone-sim_d.a";
+			remoteRef = F7F8A977173E3350005DDE07 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
 		8D1107290486CEB800E47090 /* Resources */ = {
@@ -219,12 +303,24 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		F7F8A97B173E3376005DDE07 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = cinder;
+			targetProxy = F7F8A97A173E3376005DDE07 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
 		C01FCF4B08A954540054247B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CINDER_PATH = $SRCROOT/../Cinder/;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_CXX_LIBRARY = "libc++";
 				COPY_PHASE_STRIP = NO;
 				ENABLE_OPENMP_SUPPORT = NO;
+				GCC_C_LANGUAGE_STANDARD = "compiler-default";
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
 				GCC_MODEL_TUNING = G5;
@@ -233,12 +329,15 @@
 				GCC_PREFIX_HEADER = FluidCinder_Prefix.pch;
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				GCC_UNROLL_LOOPS = NO;
-				GCC_VERSION = com.apple.compilers.llvmgcc42;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				HEADER_SEARCH_PATHS = "\"$(CINDER_PATH)/boost\"";
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "$(HOME)/Applications";
 				LLVM_LTO = YES;
-				OTHER_LDFLAGS = "\"$(CINDER_PATH)/lib/libcinder_d.a\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				PRODUCT_NAME = FluidCinder;
+				SDKROOT = macosx;
+				USER_HEADER_SEARCH_PATHS = "\"$(CINDER_PATH)/include\" ../include";
 				WRAPPER_EXTENSION = app;
 			};
 			name = Debug;
@@ -246,9 +345,13 @@
 		C01FCF4C08A954540054247B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CINDER_PATH = $SRCROOT/../Cinder/;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_CXX_LIBRARY = "libc++";
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_OPENMP_SUPPORT = YES;
+				GCC_C_LANGUAGE_STANDARD = "compiler-default";
 				GCC_FAST_MATH = YES;
 				GCC_FEEDBACK_DIRECTED_OPTIMIZATION = Off;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
@@ -259,13 +362,16 @@
 				GCC_PREFIX_HEADER = FluidCinder_Prefix.pch;
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				GCC_UNROLL_LOOPS = NO;
-				GCC_VERSION = com.apple.compilers.llvmgcc42;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				HEADER_SEARCH_PATHS = "\"$(CINDER_PATH)/boost\"";
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "$(HOME)/Applications";
 				LLVM_LTO = YES;
-				OTHER_LDFLAGS = "\"$(CINDER_PATH)/lib/libcinder.a\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				PRODUCT_NAME = FluidCinder;
+				SDKROOT = macosx;
 				STRIP_INSTALLED_PRODUCT = YES;
+				USER_HEADER_SEARCH_PATHS = "\"$(CINDER_PATH)/include\" ../include";
 				WRAPPER_EXTENSION = app;
 			};
 			name = Release;
